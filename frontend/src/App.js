@@ -67,9 +67,12 @@ function App() {
 
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       console.log('Starting file generation...');
+      
+      // Use hidden form submission for better compatibility with sandbox
       const formData = new FormData();
       formData.append('old_file', oldFile);
       formData.append('mags_file', magsFile);
@@ -84,7 +87,6 @@ function App() {
       });
 
       console.log('Response received:', response.status, response.statusText);
-      console.log('Response headers:', [...response.headers.entries()]);
 
       if (!response.ok) {
         let errorMessage = 'Failed to generate mapping';
@@ -102,37 +104,68 @@ function App() {
       console.log('Getting response text...');
       const csvText = await response.text();
       console.log('CSV text length:', csvText.length, 'characters');
-      console.log('First 100 chars:', csvText.substring(0, 100));
       
       if (!csvText || csvText.length === 0) {
         throw new Error('Received empty response from server');
       }
       
-      // Create blob from text
-      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-      console.log('Blob created:', blob.size, 'bytes');
+      // Try multiple download methods
+      console.log('Attempting download...');
       
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'user_mac_mapping.csv');
-      link.style.visibility = 'hidden';
+      // Method 1: Data URI (works better in sandboxed environments)
+      try {
+        const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvText);
+        const link = document.createElement('a');
+        link.href = dataUri;
+        link.download = 'user_mac_mapping.csv';
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log('✓ Download method 1 (Data URI) triggered');
+        setSuccess('✓ CSV file downloaded! Check your Downloads folder (user_mac_mapping.csv)');
+        setTimeout(() => setSuccess(null), 8000);
+        
+      } catch (err1) {
+        console.log('Method 1 failed, trying method 2:', err1);
+        
+        // Method 2: Blob URL
+        try {
+          const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'user_mac_mapping.csv';
+          link.style.display = 'none';
+          
+          document.body.appendChild(link);
+          link.click();
+          
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 100);
+          
+          console.log('✓ Download method 2 (Blob URL) triggered');
+          setSuccess('✓ CSV file downloaded! Check your Downloads folder (user_mac_mapping.csv)');
+          setTimeout(() => setSuccess(null), 8000);
+          
+        } catch (err2) {
+          console.log('Method 2 failed, trying method 3:', err2);
+          
+          // Method 3: Show in new window (last resort)
+          const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+          
+          console.log('✓ Download method 3 (New window) triggered');
+          setSuccess('✓ CSV opened in new tab. Right-click → Save As → user_mac_mapping.csv');
+          setTimeout(() => setSuccess(null), 10000);
+        }
+      }
       
-      document.body.appendChild(link);
-      console.log('Download link created and added to DOM');
-      
-      // Trigger download
-      link.click();
-      console.log('Download triggered');
-      
-      // Cleanup
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      console.log('Cleanup complete');
-
-      setSuccess('✓ CSV file downloaded successfully! Check your Downloads folder.');
-      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       console.error('Error during file generation:', err);
       setError(err.message);
