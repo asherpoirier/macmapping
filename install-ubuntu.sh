@@ -274,9 +274,9 @@ print_success "Supervisor configured"
 echo ""
 
 ################################################################################
-# 11. Setup Nginx (Optional)
+# 12. Setup Nginx (Optional)
 ################################################################################
-print_message "Step 11: Setting up Nginx reverse proxy..."
+print_message "Step 12: Setting up Nginx reverse proxy..."
 read -p "Do you want to configure Nginx as reverse proxy? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
