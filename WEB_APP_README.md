@@ -66,9 +66,10 @@ The generated CSV file (`user_mac_mapping.csv`) contains:
 ```csv
 old_user_id,mac_address,new_user_id,username
 14003,N/A,117140,nv1hosting
-19348,00:1E:B8:CA:53:5A,117141,tVRrjvdYWk6MSSKZjtxS9anugxt7J6y5
+19348,MDA6MUU6Qjg6Q0E6NTM6NUE=,117141,tVRrjvdYWk6MSSKZjtxS9anugxt7J6y5
 ...
 ```
+**Note**: MAC addresses are kept in their original format from the source CSV (e.g., base64 encoded)
 
 ## API Endpoints
 
