@@ -23,7 +23,7 @@ The script processes three CSV files:
 
 ## Mapping Logic
 1. **Download**: Fetches all three CSV files from provided URLs
-2. **MAC Decoding**: Converts base64-encoded MAC addresses to standard format (XX:XX:XX:XX:XX:XX)
+2. **MAC Address Handling**: MAC addresses are kept in their original format (no decoding/encoding)
 3. **User Matching**: Matches old and new users by username
 4. **MAC Linking**: Links MAC addresses from the mags table using old user_id
 5. **Output**: Generates a CSV with old_user_id, mac_address, and new_user_id
