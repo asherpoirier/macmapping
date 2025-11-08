@@ -43,7 +43,18 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Detect the actual user (not root)
+if [ -n "$SUDO_USER" ]; then
+    ACTUAL_USER="$SUDO_USER"
+else
+    # If not using sudo, ask for username
+    print_warning "Running as root without sudo."
+    read -p "Enter the username that should own the application (press Enter for 'www-data'): " ACTUAL_USER
+    ACTUAL_USER=${ACTUAL_USER:-www-data}
+fi
+
 print_message "Starting User-MAC Mapper installation on Ubuntu 24.04..."
+print_message "Application will run as user: $ACTUAL_USER"
 echo ""
 
 ################################################################################
