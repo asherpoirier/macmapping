@@ -59,7 +59,7 @@ function App() {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!oldFile || !magsFile || !newFile) {
       setError('Please upload all three CSV files');
       return;
@@ -70,101 +70,47 @@ function App() {
     setSuccess(null);
 
     try {
-      console.log('Starting file generation...');
+      console.log('Starting file generation with form submission...');
       
-      // Use hidden form submission for better compatibility with sandbox
-      const formData = new FormData();
-      formData.append('old_file', oldFile);
-      formData.append('mags_file', magsFile);
-      formData.append('new_file', newFile);
+      // Create a hidden form for file submission - this works better in sandboxed environments
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = `${process.env.REACT_APP_BACKEND_URL}/api/process-files`;
+      form.target = '_blank'; // Open in new tab to trigger download
+      form.style.display = 'none';
 
-      const apiUrl = `${process.env.REACT_APP_BACKEND_URL}/api/process-files`;
-      console.log('Sending request to:', apiUrl);
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        body: formData,
-      });
+      // Create file inputs
+      const createFileInput = (name, file) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.name = name;
+        
+        // Create a new FileList-like object
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        input.files = dataTransfer.files;
+        
+        return input;
+      };
 
-      console.log('Response received:', response.status, response.statusText);
+      form.appendChild(createFileInput('old_file', oldFile));
+      form.appendChild(createFileInput('mags_file', magsFile));
+      form.appendChild(createFileInput('new_file', newFile));
 
-      if (!response.ok) {
-        let errorMessage = 'Failed to generate mapping';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.detail || errorMessage;
-        } catch (e) {
-          const text = await response.text();
-          errorMessage = text || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Get the CSV text directly
-      console.log('Getting response text...');
-      const csvText = await response.text();
-      console.log('CSV text length:', csvText.length, 'characters');
+      // Append form to body and submit
+      document.body.appendChild(form);
+      console.log('Form created and appended, submitting...');
       
-      if (!csvText || csvText.length === 0) {
-        throw new Error('Received empty response from server');
-      }
+      form.submit();
       
-      // Try multiple download methods
-      console.log('Attempting download...');
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(form);
+        console.log('Form cleaned up');
+      }, 1000);
       
-      // Method 1: Data URI (works better in sandboxed environments)
-      try {
-        const dataUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvText);
-        const link = document.createElement('a');
-        link.href = dataUri;
-        link.download = 'user_mac_mapping.csv';
-        link.style.display = 'none';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        console.log('✓ Download method 1 (Data URI) triggered');
-        setSuccess('✓ CSV file downloaded! Check your Downloads folder (user_mac_mapping.csv)');
-        setTimeout(() => setSuccess(null), 8000);
-        
-      } catch (err1) {
-        console.log('Method 1 failed, trying method 2:', err1);
-        
-        // Method 2: Blob URL
-        try {
-          const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = 'user_mac_mapping.csv';
-          link.style.display = 'none';
-          
-          document.body.appendChild(link);
-          link.click();
-          
-          setTimeout(() => {
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-          }, 100);
-          
-          console.log('✓ Download method 2 (Blob URL) triggered');
-          setSuccess('✓ CSV file downloaded! Check your Downloads folder (user_mac_mapping.csv)');
-          setTimeout(() => setSuccess(null), 8000);
-          
-        } catch (err2) {
-          console.log('Method 2 failed, trying method 3:', err2);
-          
-          // Method 3: Show in new window (last resort)
-          const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          window.open(url, '_blank');
-          
-          console.log('✓ Download method 3 (New window) triggered');
-          setSuccess('✓ CSV opened in new tab. Right-click → Save As → user_mac_mapping.csv');
-          setTimeout(() => setSuccess(null), 10000);
-        }
-      }
+      setSuccess('✓ Download started! The CSV will open in a new tab. If it doesn\'t auto-download, right-click → Save As → user_mac_mapping.csv');
+      setTimeout(() => setSuccess(null), 10000);
       
     } catch (err) {
       console.error('Error during file generation:', err);
