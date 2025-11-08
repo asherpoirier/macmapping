@@ -147,6 +147,7 @@ function App() {
     setNewFile(null);
     setPreview(null);
     setError(null);
+    setSuccess(null);
   };
 
   return (
