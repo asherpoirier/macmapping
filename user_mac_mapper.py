@@ -22,16 +22,14 @@ def download_csv(url):
         return list(csv.DictReader(content.splitlines()))
 
 def decode_mac_address(encoded_mac):
-    """Decode base64 encoded MAC address to readable format"""
+    """Return MAC address as-is without decoding"""
     try:
         if not encoded_mac or encoded_mac == '\\N':
             return None
-        decoded = base64.b64decode(encoded_mac).hex()
-        # Format as MAC address (XX:XX:XX:XX:XX:XX)
-        mac = ':'.join([decoded[i:i+2].upper() for i in range(0, 12, 2)])
-        return mac
+        # Return the MAC address as-is without decoding
+        return encoded_mac
     except Exception as e:
-        print(f"Error decoding MAC: {encoded_mac} - {e}")
+        print(f"Error processing MAC: {encoded_mac} - {e}")
         return None
 
 def main():
