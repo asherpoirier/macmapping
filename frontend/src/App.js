@@ -101,25 +101,36 @@ function App() {
       }
       
       console.log('Creating download link...');
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'user_mac_mapping.csv';
-      document.body.appendChild(a);
       
-      console.log('Triggering download...');
-      a.click();
-      
-      // Clean up
-      setTimeout(() => {
-        console.log('Cleaning up...');
-        a.remove();
-        window.URL.revokeObjectURL(url);
-      }, 100);
+      // Try modern download first
+      try {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'user_mac_mapping.csv';
+        a.style.display = 'none';
+        
+        document.body.appendChild(a);
+        console.log('Triggering download...');
+        a.click();
+        
+        // Clean up after a delay
+        setTimeout(() => {
+          console.log('Cleaning up...');
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 250);
+        
+        console.log('Download initiated successfully');
+      } catch (downloadError) {
+        console.error('Modern download failed, trying fallback:', downloadError);
+        // Fallback: Open in new window
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => window.URL.revokeObjectURL(url), 250);
+      }
 
       setError(null);
-      console.log('Download initiated successfully');
       alert('CSV file downloaded successfully! Check your downloads folder.');
     } catch (err) {
       setError(err.message);
