@@ -172,6 +172,11 @@ async def preview_mapping(
         raise HTTPException(status_code=500, detail=f"Error previewing files: {str(e)}")
 
 
+# Add a root route for the main app (without /api prefix)
+@app.get("/")
+async def root_redirect():
+    return {"message": "User-MAC Mapper API", "note": "Use /api/ endpoint", "version": "1.0"}
+
 # Include the router in the main app
 app.include_router(api_router)
 
