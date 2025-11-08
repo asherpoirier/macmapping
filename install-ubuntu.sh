@@ -340,9 +340,9 @@ fi
 echo ""
 
 ################################################################################
-# 13. Start Services
+# 14. Start Services
 ################################################################################
-print_message "Step 13: Starting services..."
+print_message "Step 14: Starting services..."
 supervisorctl start macmapping-backend
 supervisorctl start macmapping-frontend
 sleep 5
