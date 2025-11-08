@@ -8,6 +8,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   const handleFileChange = (setter) => (e) => {
     const file = e.target.files[0];
