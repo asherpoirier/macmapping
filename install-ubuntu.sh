@@ -351,9 +351,9 @@ print_success "Services started"
 echo ""
 
 ################################################################################
-# 14. Create Helper Scripts
+# 15. Create Helper Scripts
 ################################################################################
-print_message "Step 14: Creating helper scripts..."
+print_message "Step 15: Creating helper scripts..."
 
 # Start script
 cat > $APP_DIR/start.sh << EOF
