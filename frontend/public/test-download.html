@@ -131,7 +131,6 @@
                 if (!response.ok) {
                     const errorText = await response.text();
                     log(`❌ Error response: ${errorText}`, 'error');
-                    alert('Error: ' + errorText);
                     return;
                 }
 
