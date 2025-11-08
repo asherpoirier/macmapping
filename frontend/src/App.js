@@ -131,7 +131,8 @@ function App() {
       URL.revokeObjectURL(url);
       console.log('Cleanup complete');
 
-      alert('✓ CSV file has been downloaded! Check your Downloads folder.');
+      setSuccess('✓ CSV file downloaded successfully! Check your Downloads folder.');
+      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       console.error('Error during file generation:', err);
       setError(err.message);
