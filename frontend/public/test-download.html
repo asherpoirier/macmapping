@@ -168,9 +168,8 @@
                     document.body.removeChild(link);
                     URL.revokeObjectURL(url);
                     log('🧹 Cleanup complete', 'info');
+                    log('✅✅✅ CSV file should be in your Downloads folder!', 'success');
                 }, 100);
-
-                alert('✅ CSV file should be downloading! Check your Downloads folder.');
                 
             } catch (err) {
                 log(`❌ Error: ${err.message}`, 'error');
