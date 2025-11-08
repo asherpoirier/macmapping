@@ -64,15 +64,19 @@ function App() {
     setError(null);
 
     try {
+      console.log('Starting file generation...');
       const formData = new FormData();
       formData.append('old_file', oldFile);
       formData.append('mags_file', magsFile);
       formData.append('new_file', newFile);
 
+      console.log('Sending request to:', `${process.env.REACT_APP_BACKEND_URL}/api/process-files`);
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/process-files`, {
         method: 'POST',
         body: formData,
       });
+
+      console.log('Response received:', response.status, response.statusText);
 
       if (!response.ok) {
         let errorMessage = 'Failed to generate mapping';
