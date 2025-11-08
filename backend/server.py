@@ -1,23 +1,17 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
+import csv
+import base64
+import io
 from typing import List
-import uuid
-from datetime import datetime, timezone
-
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
-
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -26,45 +20,160 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+def decode_mac_address(encoded_mac: str) -> str:
+    """Decode base64 encoded MAC address to readable format"""
+    try:
+        if not encoded_mac or encoded_mac in ['\\N', 'N/A', '']:
+            return 'N/A'
+        decoded = base64.b64decode(encoded_mac).hex()
+        # Format as MAC address (XX:XX:XX:XX:XX:XX)
+        mac = ':'.join([decoded[i:i+2].upper() for i in range(0, 12, 2)])
+        return mac
+    except Exception as e:
+        logging.error(f"Error decoding MAC: {encoded_mac} - {e}")
+        return 'N/A'
+
+
+def process_csv_files(old_content: str, mags_content: str, new_content: str) -> List[dict]:
+    """Process the three CSV files and create mappings"""
     
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Parse CSV contents
+    old_users = list(csv.DictReader(io.StringIO(old_content)))
+    mags_data = list(csv.DictReader(io.StringIO(mags_content)))
+    new_users = list(csv.DictReader(io.StringIO(new_content)))
+    
+    # Map old user_id to MAC address
+    old_id_to_mac = {}
+    for mag in mags_data:
+        old_user_id = mag.get('user_id', '').strip()
+        encoded_mac = mag.get('mac', '').strip()
+        
+        if old_user_id and encoded_mac:
+            mac_address = decode_mac_address(encoded_mac)
+            if mac_address:
+                old_id_to_mac[old_user_id] = mac_address
+    
+    # Create old user lookup by username
+    old_users_by_username = {}
+    for user in old_users:
+        username = user.get('username', '').strip()
+        user_id = user.get('id', '').strip()
+        if username and user_id:
+            old_users_by_username[username] = user_id
+    
+    # Create mappings
+    mappings = []
+    for new_user in new_users:
+        new_user_id = new_user.get('id', '').strip()
+        username = new_user.get('username', '').strip()
+        
+        if not username or not new_user_id:
+            continue
+        
+        # Find corresponding old user by username
+        old_user_id = old_users_by_username.get(username)
+        
+        if old_user_id:
+            # Get MAC address for old user
+            mac_address = old_id_to_mac.get(old_user_id, 'N/A')
+            
+            mappings.append({
+                'old_user_id': old_user_id,
+                'mac_address': mac_address,
+                'new_user_id': new_user_id,
+                'username': username
+            })
+    
+    return mappings
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
 
-# Add your routes to the router instead of directly to app
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "User-MAC Mapper API", "version": "1.0"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+@api_router.post("/process-files")
+async def process_files(
+    old_file: UploadFile = File(..., description="Old users CSV file"),
+    mags_file: UploadFile = File(..., description="MACs CSV file"),
+    new_file: UploadFile = File(..., description="New users CSV file")
+):
+    """Process the three CSV files and return mapping CSV"""
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
+    try:
+        # Read file contents
+        old_content = (await old_file.read()).decode('utf-8')
+        mags_content = (await mags_file.read()).decode('utf-8')
+        new_content = (await new_file.read()).decode('utf-8')
+        
+        # Process files
+        mappings = process_csv_files(old_content, mags_content, new_content)
+        
+        if not mappings:
+            raise HTTPException(status_code=400, detail="No mappings could be created. Please check your CSV files.")
+        
+        # Generate CSV output
+        output = io.StringIO()
+        fieldnames = ['old_user_id', 'mac_address', 'new_user_id', 'username']
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(mappings)
+        
+        # Get CSV content
+        csv_content = output.getvalue()
+        
+        # Create response with file download
+        return StreamingResponse(
+            iter([csv_content]),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": "attachment; filename=user_mac_mapping.csv"
+            }
+        )
+        
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid file encoding. Please ensure files are UTF-8 encoded.")
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Missing required column in CSV: {str(e)}")
+    except Exception as e:
+        logging.error(f"Error processing files: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing files: {str(e)}")
+
+
+@api_router.post("/preview")
+async def preview_mapping(
+    old_file: UploadFile = File(...),
+    mags_file: UploadFile = File(...),
+    new_file: UploadFile = File(...)
+):
+    """Preview the mapping without downloading"""
     
-    return status_checks
+    try:
+        # Read file contents
+        old_content = (await old_file.read()).decode('utf-8')
+        mags_content = (await mags_file.read()).decode('utf-8')
+        new_content = (await new_file.read()).decode('utf-8')
+        
+        # Process files
+        mappings = process_csv_files(old_content, mags_content, new_content)
+        
+        # Calculate statistics
+        total = len(mappings)
+        with_mac = sum(1 for m in mappings if m['mac_address'] != 'N/A')
+        without_mac = total - with_mac
+        
+        return {
+            "success": True,
+            "total_mappings": total,
+            "with_mac": with_mac,
+            "without_mac": without_mac,
+            "sample": mappings[:10]  # First 10 mappings as preview
+        }
+        
+    except Exception as e:
+        logging.error(f"Error previewing files: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error previewing files: {str(e)}")
+
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -83,7 +192,3 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
