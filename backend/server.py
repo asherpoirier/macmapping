@@ -143,18 +143,21 @@ async def process_files(
         mags_content = (await mags_file.read()).decode('utf-8')
         new_content = (await new_file.read()).decode('utf-8')
         
-        # Process files
-        mappings = process_csv_files(old_content, mags_content, new_content)
+        # Process files using MACs template format
+        mappings = process_csv_files(old_content, mags_content, new_content, output_format='macs_template')
         
         if not mappings:
             raise HTTPException(status_code=400, detail="No mappings could be created. Please check your CSV files.")
         
-        # Generate CSV output
+        # Generate CSV output using the same headers as the original MACs CSV
         output = io.StringIO()
-        fieldnames = ['old_user_id', 'mac_address', 'new_user_id', 'username']
-        writer = csv.DictWriter(output, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(mappings)
+        
+        # Get headers from first row (all rows should have same keys)
+        if mappings:
+            fieldnames = list(mappings[0].keys())
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(mappings)
         
         # Get CSV content
         csv_content = output.getvalue()
