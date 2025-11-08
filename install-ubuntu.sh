@@ -320,9 +320,9 @@ fi
 echo ""
 
 ################################################################################
-# 12. Setup Firewall (Optional)
+# 13. Setup Firewall (Optional)
 ################################################################################
-print_message "Step 12: Setting up firewall..."
+print_message "Step 13: Setting up firewall..."
 read -p "Do you want to configure UFW firewall? (y/N): " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
