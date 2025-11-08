@@ -235,7 +235,7 @@ autostart=true
 autorestart=true
 stderr_logfile=/var/log/supervisor/macmapping-backend.err.log
 stdout_logfile=/var/log/supervisor/macmapping-backend.out.log
-user=$SUDO_USER
+user=$ACTUAL_USER
 environment=PATH="$APP_DIR/backend/venv/bin"
 EOF
 
@@ -248,7 +248,7 @@ autostart=true
 autorestart=true
 stderr_logfile=/var/log/supervisor/macmapping-frontend.err.log
 stdout_logfile=/var/log/supervisor/macmapping-frontend.out.log
-user=$SUDO_USER
+user=$ACTUAL_USER
 environment=PATH="/usr/bin:/usr/local/bin"
 EOF
 
