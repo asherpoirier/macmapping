@@ -37,9 +37,10 @@ The script processes three CSV files:
 ```
 old_user_id,mac_address,new_user_id,username
 14003,N/A,117140,nv1hosting
-19348,30:30:3A:31:45:3A,117141,tVRrjvdYWk6MSSKZjtxS9anugxt7J6y5
-30669,30:30:3A:31:45:3A,117142,neSAyawKs3b3Stqm3CpphZHpCHcBV8WG
+19348,MDA6MUU6Qjg6Q0E6NTM6NUE=,117141,tVRrjvdYWk6MSSKZjtxS9anugxt7J6y5
+30669,MDA6MUU6Qjg6Q0Q6QzU6RDQ=,117142,neSAyawKs3b3Stqm3CpphZHpCHcBV8WG
 ```
+**Note**: MAC addresses are preserved in their original format from the source files.
 
 ## Usage
 
