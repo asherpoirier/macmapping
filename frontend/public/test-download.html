@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        input[type="file"] {
+            margin: 10px 0;
+            padding: 10px;
+            display: block;
+            width: 100%;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #5568d3; }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #log {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry { margin: 5px 0; }
+        .log-success { color: green; }
+        .log-error { color: red; }
+        .log-info { color: blue; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 CSV Mapper Download Test</h1>
+        <p>This page tests the CSV download functionality</p>
+        
+        <div>
+            <label><strong>Old Users CSV:</strong></label>
+            <input type="file" id="oldFile" accept=".csv" />
+            
+            <label><strong>MACs CSV:</strong></label>
+            <input type="file" id="magsFile" accept=".csv" />
+            
+            <label><strong>New Users CSV:</strong></label>
+            <input type="file" id="newFile" accept=".csv" />
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button onclick="testDownload()" id="downloadBtn">📥 Test Download</button>
+            <button onclick="clearLog()">🗑️ Clear Log</button>
+        </div>
+        
+        <div id="log">
+            <div class="log-info">Console output will appear here...</div>
+        </div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function testDownload() {
+            const oldFile = document.getElementById('oldFile').files[0];
+            const magsFile = document.getElementById('magsFile').files[0];
+            const newFile = document.getElementById('newFile').files[0];
+
+            if (!oldFile || !magsFile || !newFile) {
+                log('❌ Please select all three CSV files', 'error');
+                alert('Please select all three CSV files');
+                return;
+            }
+
+            log('🚀 Starting download test...', 'info');
+            log(`Files: ${oldFile.name}, ${magsFile.name}, ${newFile.name}`, 'info');
+
+            try {
+                const formData = new FormData();
+                formData.append('old_file', oldFile);
+                formData.append('mags_file', magsFile);
+                formData.append('new_file', newFile);
+
+                const apiUrl = window.location.origin + '/api/process-files';
+                log(`📡 Sending request to: ${apiUrl}`, 'info');
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                log(`📨 Response status: ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Error response: ${errorText}`, 'error');
+                    alert('Error: ' + errorText);
+                    return;
+                }
+
+                log('📄 Getting response text...', 'info');
+                const csvText = await response.text();
+                log(`✓ Received ${csvText.length} characters`, 'success');
+                log(`Preview: ${csvText.substring(0, 100)}...`, 'info');
+
+                if (!csvText || csvText.length === 0) {
+                    log('❌ Received empty response', 'error');
+                    alert('Received empty file!');
+                    return;
+                }
+
+                // Create blob
+                log('💾 Creating blob...', 'info');
+                const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+                log(`✓ Blob created: ${blob.size} bytes`, 'success');
+
+                // Create download
+                log('🔗 Creating download link...', 'info');
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'user_mac_mapping.csv';
+                link.style.display = 'none';
+                
+                document.body.appendChild(link);
+                log('✓ Link added to DOM', 'success');
+                
+                log('⬇️ Triggering download...', 'info');
+                link.click();
+                log('✅ Download triggered!', 'success');
+                
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    log('🧹 Cleanup complete', 'info');
+                }, 100);
+
+                alert('✅ CSV file should be downloading! Check your Downloads folder.');
+                
+            } catch (err) {
+                log(`❌ Error: ${err.message}`, 'error');
+                log(`Stack: ${err.stack}`, 'error');
+                alert('Error: ' + err.message);
+            }
+        }
+
+        // Log when page loads
+        window.addEventListener('load', () => {
+            log('✓ Test page loaded successfully', 'success');
+            log('Please select your CSV files and click Test Download', 'info');
+        });
+    </script>
+</body>
+</html>
