@@ -70,13 +70,16 @@ function App() {
       formData.append('mags_file', magsFile);
       formData.append('new_file', newFile);
 
-      console.log('Sending request to:', `${process.env.REACT_APP_BACKEND_URL}/api/process-files`);
-      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/process-files`, {
+      const apiUrl = `${process.env.REACT_APP_BACKEND_URL}/api/process-files`;
+      console.log('Sending request to:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData,
       });
 
       console.log('Response received:', response.status, response.statusText);
+      console.log('Response headers:', [...response.headers.entries()]);
 
       if (!response.ok) {
         let errorMessage = 'Failed to generate mapping';
@@ -90,49 +93,42 @@ function App() {
         throw new Error(errorMessage);
       }
 
-      // Download the file
-      console.log('Creating blob from response...');
-      const blob = await response.blob();
-      console.log('Blob created:', blob.size, 'bytes, type:', blob.type);
+      // Get the CSV text directly
+      console.log('Getting response text...');
+      const csvText = await response.text();
+      console.log('CSV text length:', csvText.length, 'characters');
+      console.log('First 100 chars:', csvText.substring(0, 100));
       
-      // Check if blob is valid
-      if (blob.size === 0) {
-        throw new Error('Received empty file from server');
+      if (!csvText || csvText.length === 0) {
+        throw new Error('Received empty response from server');
       }
       
-      console.log('Creating download link...');
+      // Create blob from text
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+      console.log('Blob created:', blob.size, 'bytes');
       
-      // Try modern download first
-      try {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'user_mac_mapping.csv';
-        a.style.display = 'none';
-        
-        document.body.appendChild(a);
-        console.log('Triggering download...');
-        a.click();
-        
-        // Clean up after a delay
-        setTimeout(() => {
-          console.log('Cleaning up...');
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
-        }, 250);
-        
-        console.log('Download initiated successfully');
-      } catch (downloadError) {
-        console.error('Modern download failed, trying fallback:', downloadError);
-        // Fallback: Open in new window
-        const url = window.URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        setTimeout(() => window.URL.revokeObjectURL(url), 250);
-      }
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'user_mac_mapping.csv');
+      link.style.visibility = 'hidden';
+      
+      document.body.appendChild(link);
+      console.log('Download link created and added to DOM');
+      
+      // Trigger download
+      link.click();
+      console.log('Download triggered');
+      
+      // Cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      console.log('Cleanup complete');
 
-      setError(null);
-      alert('CSV file downloaded successfully! Check your downloads folder.');
+      alert('✓ CSV file has been downloaded! Check your Downloads folder.');
     } catch (err) {
+      console.error('Error during file generation:', err);
       setError(err.message);
     } finally {
       setLoading(false);
