@@ -166,7 +166,7 @@ All errors are displayed clearly in the UI with helpful messages.
 
 ## Data Processing Logic
 
-1. **MAC Decoding**: Converts base64-encoded MAC addresses to standard format (XX:XX:XX:XX:XX:XX)
+1. **MAC Address Handling**: MAC addresses are kept in their original format (no decoding/encoding)
 2. **User Matching**: Matches old and new users by username
 3. **MAC Linking**: Links MAC addresses using old user_id from mags table
 4. **Missing Data**: Users without MAC addresses are marked as "N/A"
