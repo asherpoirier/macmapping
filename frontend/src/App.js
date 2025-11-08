@@ -88,16 +88,28 @@ function App() {
 
       // Download the file
       const blob = await response.blob();
+      
+      // Check if blob is valid
+      if (blob.size === 0) {
+        throw new Error('Received empty file from server');
+      }
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
       a.download = 'user_mac_mapping.csv';
       document.body.appendChild(a);
       a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
+      
+      // Clean up
+      setTimeout(() => {
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      }, 100);
 
       setError(null);
+      alert('CSV file downloaded successfully! Check your downloads folder.');
     } catch (err) {
       setError(err.message);
     } finally {
