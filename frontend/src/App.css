@@ -179,6 +179,23 @@ body {
   font-size: 1.25rem;
 }
 
+/* Success Message */
+.success-message {
+  background: #c6f6d5;
+  color: #22543d;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.success-icon {
+  font-size: 1.25rem;
+}
+
 /* Preview Section */
 .preview-section {
   background: white;
