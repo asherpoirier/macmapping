@@ -210,6 +210,13 @@ function App() {
             </div>
           )}
 
+          {success && (
+            <div className="success-message">
+              <span className="success-icon">✓</span>
+              {success}
+            </div>
+          )}
+
           <div className="button-group">
             <button
               onClick={handlePreview}
