@@ -31,24 +31,27 @@ def decode_mac_address(encoded_mac: str) -> str:
         return 'N/A'
 
 
-def process_csv_files(old_content: str, mags_content: str, new_content: str) -> List[dict]:
-    """Process the three CSV files and create mappings"""
+def process_csv_files(old_content: str, mags_content: str, new_content: str, output_format: str = 'simple') -> List[dict]:
+    """Process the three CSV files and create mappings
+    
+    Args:
+        old_content: Old users CSV content
+        mags_content: MACs CSV content
+        new_content: New users CSV content
+        output_format: 'simple' for old_user_id,mac_address,new_user_id,username
+                      'macs_template' to match the uploaded MACs CSV format
+    """
     
     # Parse CSV contents
     old_users = list(csv.DictReader(io.StringIO(old_content)))
     mags_data = list(csv.DictReader(io.StringIO(mags_content)))
     new_users = list(csv.DictReader(io.StringIO(new_content)))
     
-    # Map old user_id to MAC address
-    old_id_to_mac = {}
-    for mag in mags_data:
-        old_user_id = mag.get('user_id', '').strip()
-        encoded_mac = mag.get('mac', '').strip()
-        
-        if old_user_id and encoded_mac:
-            mac_address = decode_mac_address(encoded_mac)
-            if mac_address:
-                old_id_to_mac[old_user_id] = mac_address
+    # Get the original mags CSV headers for template mode
+    mags_headers = list(mags_data[0].keys()) if mags_data else []
+    
+    # Create old to new user ID mapping
+    old_to_new_user_id = {}
     
     # Create old user lookup by username
     old_users_by_username = {}
@@ -58,28 +61,65 @@ def process_csv_files(old_content: str, mags_content: str, new_content: str) -> 
         if username and user_id:
             old_users_by_username[username] = user_id
     
-    # Create mappings
+    # Create new user lookup by username
+    new_users_by_username = {}
+    for user in new_users:
+        username = user.get('username', '').strip()
+        user_id = user.get('id', '').strip()
+        if username and user_id:
+            new_users_by_username[username] = user_id
+    
+    # Build old_to_new mapping
+    for username, old_id in old_users_by_username.items():
+        new_id = new_users_by_username.get(username)
+        if new_id:
+            old_to_new_user_id[old_id] = new_id
+    
+    # Create mappings based on format
     mappings = []
-    for new_user in new_users:
-        new_user_id = new_user.get('id', '').strip()
-        username = new_user.get('username', '').strip()
-        
-        if not username or not new_user_id:
-            continue
-        
-        # Find corresponding old user by username
-        old_user_id = old_users_by_username.get(username)
-        
-        if old_user_id:
-            # Get MAC address for old user
-            mac_address = old_id_to_mac.get(old_user_id, 'N/A')
+    
+    if output_format == 'macs_template':
+        # Output in the same format as the uploaded MACs CSV
+        for mag_row in mags_data:
+            old_user_id = mag_row.get('user_id', '').strip()
+            new_user_id = old_to_new_user_id.get(old_user_id)
             
-            mappings.append({
-                'old_user_id': old_user_id,
-                'mac_address': mac_address,
-                'new_user_id': new_user_id,
-                'username': username
-            })
+            if new_user_id:
+                # Create a new row with the same structure as original
+                new_row = mag_row.copy()
+                new_row['user_id'] = new_user_id
+                mappings.append(new_row)
+            else:
+                # If no mapping found, keep original (or skip if you prefer)
+                # For now, we'll include it with original user_id
+                mappings.append(mag_row.copy())
+    
+    else:
+        # Simple format: old_user_id, mac_address, new_user_id, username
+        for new_user in new_users:
+            new_user_id = new_user.get('id', '').strip()
+            username = new_user.get('username', '').strip()
+            
+            if not username or not new_user_id:
+                continue
+            
+            # Find corresponding old user by username
+            old_user_id = old_users_by_username.get(username)
+            
+            if old_user_id:
+                # Get MAC address for old user
+                mac_address = 'N/A'
+                for mag in mags_data:
+                    if mag.get('user_id', '').strip() == old_user_id:
+                        mac_address = mag.get('mac', 'N/A').strip()
+                        break
+                
+                mappings.append({
+                    'old_user_id': old_user_id,
+                    'mac_address': mac_address,
+                    'new_user_id': new_user_id,
+                    'username': username
+                })
     
     return mappings
 
