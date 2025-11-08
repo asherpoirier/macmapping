@@ -167,7 +167,7 @@ async def process_files(
             iter([csv_content]),
             media_type="text/csv",
             headers={
-                "Content-Disposition": "attachment; filename=user_mac_mapping.csv"
+                "Content-Disposition": "attachment; filename=new_macs.csv"
             }
         )
         
