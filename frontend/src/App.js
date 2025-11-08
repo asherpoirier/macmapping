@@ -59,7 +59,7 @@ function App() {
     }
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!oldFile || !magsFile || !newFile) {
       setError('Please upload all three CSV files');
       return;
@@ -70,46 +70,171 @@ function App() {
     setSuccess(null);
 
     try {
-      console.log('Starting file generation with form submission...');
+      console.log('Starting file generation...');
       
-      // Create a hidden form for file submission - this works better in sandboxed environments
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = `${process.env.REACT_APP_BACKEND_URL}/api/process-files`;
-      form.target = '_blank'; // Open in new tab to trigger download
-      form.style.display = 'none';
+      const formData = new FormData();
+      formData.append('old_file', oldFile);
+      formData.append('mags_file', magsFile);
+      formData.append('new_file', newFile);
 
-      // Create file inputs
-      const createFileInput = (name, file) => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.name = name;
-        
-        // Create a new FileList-like object
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        input.files = dataTransfer.files;
-        
-        return input;
-      };
+      const apiUrl = `${process.env.REACT_APP_BACKEND_URL}/api/process-files`;
+      console.log('Sending request to:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+      });
 
-      form.appendChild(createFileInput('old_file', oldFile));
-      form.appendChild(createFileInput('mags_file', magsFile));
-      form.appendChild(createFileInput('new_file', newFile));
+      console.log('Response received:', response.status);
 
-      // Append form to body and submit
-      document.body.appendChild(form);
-      console.log('Form created and appended, submitting...');
+      if (!response.ok) {
+        let errorMessage = 'Failed to generate mapping';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          const text = await response.text();
+          errorMessage = text || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Get the CSV text
+      const csvText = await response.text();
+      console.log('Received CSV, length:', csvText.length);
       
-      form.submit();
+      if (!csvText || csvText.length === 0) {
+        throw new Error('Received empty response from server');
+      }
       
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(form);
-        console.log('Form cleaned up');
-      }, 1000);
+      // Since download is blocked in sandbox, show the CSV in a new window with copy/download instructions
+      console.log('Opening CSV in new window...');
       
-      setSuccess('✓ Download started! The CSV will open in a new tab. If it doesn\'t auto-download, right-click → Save As → user_mac_mapping.csv');
+      // Create an HTML page with the CSV content that user can download
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User MAC Mapping - Download</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 { color: #667eea; }
+    .instructions {
+      background: #e6f3ff;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
+      border-left: 4px solid #667eea;
+    }
+    .csv-content {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 5px;
+      overflow-x: auto;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover { background: #5568d3; }
+    .success { color: green; margin: 10px 0; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 User-MAC Address Mapping</h1>
+    
+    <div class="instructions">
+      <h3>📥 Download Instructions:</h3>
+      <ol>
+        <li><strong>Method 1 (Recommended):</strong> Click the "Download CSV" button below</li>
+        <li><strong>Method 2:</strong> Right-click anywhere on this page → "Save Page As" → Save as "user_mac_mapping.csv"</li>
+        <li><strong>Method 3:</strong> Click "Copy to Clipboard", then paste into a text editor and save as .csv</li>
+      </ol>
+    </div>
+    
+    <div>
+      <button onclick="downloadCSV()">📥 Download CSV File</button>
+      <button onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+    </div>
+    
+    <div id="status"></div>
+    
+    <h3>CSV Content Preview:</h3>
+    <div class="csv-content" id="csvContent">${csvText.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+  </div>
+
+  <script>
+    const csvData = ${JSON.stringify(csvText)};
+    
+    function downloadCSV() {
+      try {
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'user_mac_mapping.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById('status').innerHTML = '<div class="success">✓ Download started! Check your Downloads folder.</div>';
+      } catch (err) {
+        document.getElementById('status').innerHTML = '<div style="color: red;">✗ Error: ' + err.message + '. Please use Method 2 or 3.</div>';
+      }
+    }
+    
+    function copyToClipboard() {
+      navigator.clipboard.writeText(csvData).then(() => {
+        document.getElementById('status').innerHTML = '<div class="success">✓ CSV content copied to clipboard! Paste it into a text editor and save as .csv</div>';
+      }).catch((err) => {
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = csvData;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        document.getElementById('status').innerHTML = '<div class="success">✓ CSV content copied to clipboard!</div>';
+      });
+    }
+  </script>
+</body>
+</html>`;
+      
+      // Open in new window
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(htmlContent);
+        newWindow.document.close();
+        console.log('✓ CSV opened in new window');
+        setSuccess('✓ CSV opened in new tab! Use the download button on that page or save the page as user_mac_mapping.csv');
+      } else {
+        throw new Error('Pop-up blocked. Please allow pop-ups for this site.');
+      }
+      
       setTimeout(() => setSuccess(null), 10000);
       
     } catch (err) {
