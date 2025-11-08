@@ -91,28 +91,35 @@ function App() {
       }
 
       // Download the file
+      console.log('Creating blob from response...');
       const blob = await response.blob();
+      console.log('Blob created:', blob.size, 'bytes, type:', blob.type);
       
       // Check if blob is valid
       if (blob.size === 0) {
         throw new Error('Received empty file from server');
       }
       
+      console.log('Creating download link...');
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
       a.download = 'user_mac_mapping.csv';
       document.body.appendChild(a);
+      
+      console.log('Triggering download...');
       a.click();
       
       // Clean up
       setTimeout(() => {
+        console.log('Cleaning up...');
         a.remove();
         window.URL.revokeObjectURL(url);
       }, 100);
 
       setError(null);
+      console.log('Download initiated successfully');
       alert('CSV file downloaded successfully! Check your downloads folder.');
     } catch (err) {
       setError(err.message);
