@@ -222,9 +222,24 @@ fi
 echo ""
 
 ################################################################################
-# 10. Setup Supervisor for Process Management
+# 10. Fix Permissions
 ################################################################################
-print_message "Step 10: Setting up Supervisor for process management..."
+print_message "Step 10: Setting correct file permissions..."
+
+# Set ownership
+chown -R $ACTUAL_USER:$ACTUAL_USER $APP_DIR
+
+# Make sure log directory exists and is writable
+mkdir -p /var/log/supervisor
+chmod 755 /var/log/supervisor
+
+print_success "Permissions set for user: $ACTUAL_USER"
+echo ""
+
+################################################################################
+# 11. Setup Supervisor for Process Management
+################################################################################
+print_message "Step 11: Setting up Supervisor for process management..."
 
 # Backend supervisor config
 cat > /etc/supervisor/conf.d/macmapping-backend.conf << EOF
