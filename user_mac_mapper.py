@@ -5,7 +5,6 @@ Creates a CSV file mapping old user_ids with MAC addresses to new user_ids
 """
 
 import csv
-import base64
 import urllib.request
 from collections import defaultdict
 
