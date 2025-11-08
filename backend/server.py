@@ -194,12 +194,14 @@ async def preview_mapping(
         mags_content = (await mags_file.read()).decode('utf-8')
         new_content = (await new_file.read()).decode('utf-8')
         
-        # Process files
-        mappings = process_csv_files(old_content, mags_content, new_content)
+        # Process files using MACs template format
+        mappings = process_csv_files(old_content, mags_content, new_content, output_format='macs_template')
         
         # Calculate statistics
         total = len(mappings)
-        with_mac = sum(1 for m in mappings if m['mac_address'] != 'N/A')
+        
+        # Count entries with MAC addresses
+        with_mac = sum(1 for m in mappings if m.get('mac', 'N/A') not in ['N/A', '', '\\N'])
         without_mac = total - with_mac
         
         return {
@@ -207,7 +209,8 @@ async def preview_mapping(
             "total_mappings": total,
             "with_mac": with_mac,
             "without_mac": without_mac,
-            "sample": mappings[:10]  # First 10 mappings as preview
+            "sample": mappings[:10],  # First 10 mappings as preview
+            "note": "Output will match the uploaded MACs CSV template format"
         }
         
     except Exception as e:
