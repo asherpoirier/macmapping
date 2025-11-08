@@ -11,11 +11,15 @@ function App() {
 
   const handleFileChange = (setter) => (e) => {
     const file = e.target.files[0];
-    if (file && file.type === 'text/csv') {
-      setter(file);
-      setError(null);
-    } else {
-      setError('Please select a valid CSV file');
+    if (file) {
+      // Accept CSV files regardless of MIME type (some systems report different types)
+      if (file.name.endsWith('.csv') || file.type === 'text/csv' || file.type === 'application/vnd.ms-excel') {
+        setter(file);
+        setError(null);
+        console.log('File selected:', file.name, file.size, 'bytes');
+      } else {
+        setError('Please select a CSV file (.csv extension)');
+      }
     }
   };
 
