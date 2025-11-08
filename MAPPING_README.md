@@ -62,10 +62,10 @@ wc -l user_mac_mapping.csv
 ```
 
 ## Notes
-- MAC addresses are stored in base64 format in the source data and are decoded to standard MAC address format
+- MAC addresses are kept in their original format from the source data (no decoding/encoding performed)
 - Some users may not have associated MAC addresses (marked as "N/A")
 - Username is used as the primary matching key between old and new user records
-- The script handles edge cases like missing data, invalid MAC addresses, and encoding issues
+- The script handles edge cases like missing data and encoding issues
 
 ## File Location
 All generated files are located in: `/app/`
