@@ -6,7 +6,6 @@ import os
 import logging
 from pathlib import Path
 import csv
-import base64
 import io
 from typing import List
 
